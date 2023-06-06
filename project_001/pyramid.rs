@@ -7,7 +7,7 @@ fn main() {
     let rows: u32 = input.trim().parse().expect("Invalid input. Please enter a positive integer.");
 
     let mut row = 1;
-    let mut spaces = rows - 1;
+    let mut spaces = rows as i32 - 1;
     let mut stars = 1;
 
     while row <= rows {
