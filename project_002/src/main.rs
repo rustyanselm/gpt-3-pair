@@ -3,6 +3,7 @@ extern crate csv;
 use std::error::Error;
 use std::fs::File;
 use std::vec::Vec;
+use std::io::Write;
 
 fn main() {
     // Specify the path to your CSV file
@@ -41,8 +42,25 @@ let data_3 = aggregate_data(&data_1, &data_2);
     // Print the aggregated data
     for row in &data_3 {
         println!("{:?}", row);
+		println!("{:?}", row[0]);
+		println!("{:?}", row[1]);
+    if let Some(number) = parse_f32(&row[1]) {
+        println!("Parsed f32: {}", number);
+    } else {
+        println!("Failed to parse the string as an f32.");
+    }
 	}
+	
+	
+	
+    if let Err(err) = generate_histogram_plot(data_3) {
+        eprintln!("Error: {:?}", err);
+    } else {
+        println!("Histogram plot generated successfully!");
+    }
 }
+	
+
 
 fn aggregate_data(data_1: &Vec<Vec<String>>, data_2: &Vec<Vec<String>>) -> Vec<Vec<String>> {
     let mut aggregated_data: Vec<Vec<String>> = Vec::new();
@@ -96,9 +114,94 @@ fn load_csv(file_path: &str) -> Result<Vec<Vec<String>>, Box<dyn Error>> {
     Ok(data)
 }
 
-fn print_data(data: &Vec<Vec<String>>) {
-    // Print the loaded data
-    for row in data {
-        println!("{:?}", row);
+fn generate_histogram_plot(data: Vec<Vec<String>>) -> Result<(), Box<dyn std::error::Error>> {
+    // Separate the names and amounts into separate vectors
+    let mut names: Vec<String> = Vec::new();
+    let mut amounts: Vec<f32> = Vec::new();
+
+    for row in &data {
+        names.push(row[0].clone());
+        if let Some(number) = parse_f32(&row[1]) {
+            amounts.push(number);
+            println!("howdy do {}", number);
+        } else {
+            println!("Failed to parse the string as an f32.");
+        }
+    }
+
+    // Generate the JavaScript code for the chart using Chart.js
+    let chart_js_code = format!(
+        r#"
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <canvas id="chart"></canvas>
+        <script>
+            var ctx = document.getElementById('chart').getContext('2d');
+            var data = {{
+                labels: {:?},
+                datasets: [{{
+                    label: 'Amounts',
+                    data: {:?},
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }}]
+            }};
+            var options = {{
+                responsive: true,
+                scales: {{
+                    x: {{
+                        title: {{
+                            display: true,
+                            text: 'Names'
+                        }}
+                    }},
+                    y: {{
+                        title: {{
+                            display: true,
+                            text: 'Amounts'
+                        }},
+                        ticks: {{
+                            beginAtZero: true,
+                            suggestedMax: 1500
+                        }}
+                    }}
+                }}
+            }};
+            new Chart(ctx, {{
+                type: 'bar',
+                data: data,
+                options: options
+            }});
+        </script>
+        "#,
+        names, amounts
+    );
+
+    // Generate the HTML content
+    let html_content = format!(
+        r#"
+        <html>
+            <head>
+                <title>Histogram of Names vs Amounts</title>
+            </head>
+            <body>
+                {}
+            </body>
+        </html>
+        "#,
+        chart_js_code
+    );
+
+    // Create and write the HTML file
+    let mut file = File::create("histogram.html")?;
+    file.write_all(html_content.as_bytes())?;
+
+    Ok(())
+}
+
+fn parse_f32(string: &str) -> Option<f32> {
+    match string.parse::<f32>() {
+        Ok(value) => Some(value),
+        Err(_) => None,
     }
 }
